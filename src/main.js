@@ -31,6 +31,9 @@ const PANEL_STAGGER_S = 0.05
 const PANEL_SHIFT_REM = 0.7
 const PANEL_EASE_LEAVE = [0.4, 0, 1, 1]
 const PANEL_EASE_ENTER = [0.22, 1, 0.36, 1]
+const FULLSCREEN_MS = 0.28
+const FULLSCREEN_CLOSE_MS = 0.22
+const FULLSCREEN_EASE = [0.22, 1, 0.36, 1]
 const LOADSCREEN_BG_URL = '/loadingscrn/ldingBG.png'
 const PROGRESS_MS = 3000
 const PAUSE_MS = 120
@@ -543,23 +546,12 @@ function stageHtml() {
 
 function fullscreenHtml() {
   if (!state.fullscreenOpen) return ''
-  if (!useStageIframe()) {
-    return `
-    <div class="luna-fullscreen-overlay" data-region="fullscreen" role="dialog" aria-modal="true" aria-label="Full screen preview">
-      <button type="button" class="luna-fullscreen-overlay__backdrop" data-action="close-fullscreen" aria-label="Close full screen"></button>
-      <div class="luna-fullscreen-overlay__layout">
-        <button type="button" class="luna-fullscreen-overlay__close" data-action="close-fullscreen" aria-label="Close">Close</button>
-      </div>
-    </div>
-  `
-  }
-  const src = stageEmbedUrlForStep(state.projectId, state.stepId)
   return `
     <div class="luna-fullscreen-overlay" data-region="fullscreen" role="dialog" aria-modal="true" aria-label="Full screen preview">
       <button type="button" class="luna-fullscreen-overlay__backdrop" data-action="close-fullscreen" aria-label="Close full screen"></button>
       <div class="luna-fullscreen-overlay__layout">
         <button type="button" class="luna-fullscreen-overlay__close" data-action="close-fullscreen" aria-label="Close">Close</button>
-        <iframe class="luna-fullscreen-overlay__frame" src="${src}" title="Atencium steps fullscreen" allow="fullscreen"></iframe>
+        <div class="luna-fullscreen-overlay__frame is-slot" aria-hidden="true"></div>
       </div>
     </div>
   `
@@ -1003,8 +995,206 @@ function animateInfoStepSelect(activating, deactivating) {
 function patchFullscreen() {
   const host = root.querySelector('[data-region="fullscreen-host"]')
   if (host) host.innerHTML = fullscreenHtml()
-  const shell = root.querySelector('[data-stage-shell]')
-  if (shell) shell.style.visibility = state.stageEmbedVisible ? '' : 'hidden'
+}
+
+let fullscreenAnims = []
+let fullscreenLift = null
+
+function stopFullscreenAnims() {
+  fullscreenAnims.forEach((controls) => {
+    try {
+      controls.stop()
+    } catch {
+      /* already finished */
+    }
+  })
+  fullscreenAnims = []
+}
+
+function playFullscreenAnim(controls) {
+  if (controls) fullscreenAnims.push(controls)
+  return waitForAnimation(controls)
+}
+
+function setFullscreenChrome(open) {
+  root.querySelector('.luna-root')?.classList.toggle('is-fullscreen-open', open)
+  root.querySelector('.luna-canvas-row')?.classList.toggle('is-fullscreen-open', open)
+}
+
+function stageSurfaceEl() {
+  return root.querySelector('.luna-design-surface')
+}
+
+function fullscreenParts() {
+  const overlay = root.querySelector('[data-region="fullscreen"]')
+  if (!overlay) return null
+  return {
+    overlay,
+    backdrop: overlay.querySelector('.luna-fullscreen-overlay__backdrop'),
+    close: overlay.querySelector('.luna-fullscreen-overlay__close'),
+    slot: overlay.querySelector('.luna-fullscreen-overlay__frame'),
+  }
+}
+
+function liftTransform(from, to) {
+  if (!from || !to || from.width < 8 || from.height < 8 || to.width < 8 || to.height < 8) {
+    return ''
+  }
+  const dx = to.left - from.left
+  const dy = to.top - from.top
+  const sx = to.width / from.width
+  const sy = to.height / from.height
+  return `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})`
+}
+
+function applySurfaceLift(surface, rect) {
+  surface.classList.add('is-fullscreen-lift')
+  surface.style.position = 'fixed'
+  surface.style.left = `${rect.left}px`
+  surface.style.top = `${rect.top}px`
+  surface.style.width = `${rect.width}px`
+  surface.style.height = `${rect.height}px`
+  surface.style.right = 'auto'
+  surface.style.zIndex = '101'
+  surface.style.transformOrigin = 'top left'
+  surface.style.margin = '0'
+}
+
+function clearSurfaceLift(surface) {
+  if (!surface) return
+  surface.classList.remove('is-fullscreen-lift')
+  surface.style.position = ''
+  surface.style.left = ''
+  surface.style.top = ''
+  surface.style.width = ''
+  surface.style.height = ''
+  surface.style.right = ''
+  surface.style.zIndex = ''
+  surface.style.transformOrigin = ''
+  surface.style.transform = ''
+  surface.style.margin = ''
+}
+
+async function openFullscreenView() {
+  if (state.fullscreenOpen) return
+  stopFullscreenAnims()
+  const surface = stageSurfaceEl()
+  if (!surface) return
+  state.fullscreenOpen = true
+  setFullscreenChrome(true)
+  const from = surface.getBoundingClientRect()
+  patchFullscreen()
+
+  const parts = fullscreenParts()
+  if (!parts || !surface || !from) return
+
+  const { overlay, backdrop, close, slot } = parts
+  overlay.classList.add('is-animating')
+  applySurfaceLift(surface, from)
+  const to = slot?.getBoundingClientRect() ?? null
+  const expand = liftTransform(from, to)
+  fullscreenLift = { from, to, expand }
+
+  if (prefersReducedMotion()) {
+    if (expand) surface.style.transform = expand
+    overlay.classList.remove('is-animating')
+    return
+  }
+
+  surface.style.transform = 'translate(0px, 0px) scale(1)'
+  if (backdrop) backdrop.style.opacity = '0'
+  if (close) close.style.opacity = '0'
+
+  const running = []
+  if (backdrop) {
+    running.push(
+      playFullscreenAnim(
+        animate(backdrop, { opacity: [0, 1] }, { duration: FULLSCREEN_MS, easing: FULLSCREEN_EASE }),
+      ),
+    )
+  }
+  if (close) {
+    running.push(
+      playFullscreenAnim(
+        animate(
+          close,
+          { opacity: [0, 1] },
+          { duration: 0.18, delay: 0.06, easing: FULLSCREEN_EASE },
+        ),
+      ),
+    )
+  }
+  if (expand) {
+    running.push(
+      playFullscreenAnim(
+        animate(
+          surface,
+          { transform: ['translate(0px, 0px) scale(1)', expand] },
+          { duration: FULLSCREEN_MS, easing: FULLSCREEN_EASE },
+        ),
+      ),
+    )
+  }
+  await Promise.all(running)
+
+  if (expand) surface.style.transform = expand
+  if (backdrop) backdrop.style.opacity = ''
+  if (close) close.style.opacity = ''
+  overlay.classList.remove('is-animating')
+  fullscreenAnims = []
+}
+
+async function closeFullscreenView() {
+  if (!state.fullscreenOpen) return
+  stopFullscreenAnims()
+  const surface = stageSurfaceEl()
+  const parts = fullscreenParts()
+  const expand = fullscreenLift?.expand || ''
+
+  if (!parts || prefersReducedMotion() || !surface || !expand) {
+    clearSurfaceLift(surface)
+    fullscreenLift = null
+    state.fullscreenOpen = false
+    setFullscreenChrome(false)
+    patchFullscreen()
+    return
+  }
+
+  const { overlay, backdrop, close } = parts
+  overlay.classList.add('is-animating')
+
+  const running = []
+  if (backdrop) {
+    running.push(
+      playFullscreenAnim(
+        animate(backdrop, { opacity: [1, 0] }, { duration: FULLSCREEN_CLOSE_MS, easing: FULLSCREEN_EASE }),
+      ),
+    )
+  }
+  if (close) {
+    running.push(
+      playFullscreenAnim(
+        animate(close, { opacity: [1, 0] }, { duration: 0.12, easing: FULLSCREEN_EASE }),
+      ),
+    )
+  }
+  running.push(
+    playFullscreenAnim(
+      animate(
+        surface,
+        { transform: [expand, 'translate(0px, 0px) scale(1)'] },
+        { duration: FULLSCREEN_CLOSE_MS, easing: FULLSCREEN_EASE },
+      ),
+    ),
+  )
+  await Promise.all(running)
+
+  clearSurfaceLift(surface)
+  fullscreenLift = null
+  state.fullscreenOpen = false
+  setFullscreenChrome(false)
+  patchFullscreen()
+  fullscreenAnims = []
 }
 
 function bindEmbedFrames() {
@@ -1081,9 +1271,7 @@ function onRootClick(event) {
     return
   }
   if (action === 'open-fullscreen') {
-    state.fullscreenOpen = true
-    state.stageEmbedVisible = false
-    patchFullscreen()
+    void openFullscreenView()
     return
   }
   if (action === 'toggle-stage-iframe') {
@@ -1091,18 +1279,14 @@ function onRootClick(event) {
     return
   }
   if (action === 'close-fullscreen') {
-    state.fullscreenOpen = false
-    state.stageEmbedVisible = true
-    patchFullscreen()
+    void closeFullscreenView()
   }
 }
 
 function onKeyDown(event) {
   if (event.key !== 'Escape') return
   if (state.fullscreenOpen) {
-    state.fullscreenOpen = false
-    state.stageEmbedVisible = true
-    patchFullscreen()
+    void closeFullscreenView()
   } else if (state.managerOpen) {
     state.managerOpen = false
     patchChrome()

@@ -16,6 +16,27 @@
   --luna-navbar-manager-w: calc(var(--luna-center-w) / 5);
 }
 
+.luna-root.is-fullscreen-open,
+.luna-canvas-row.is-fullscreen-open {
+  overflow: visible;
+}
+
+.luna-root.is-fullscreen-open > .luna-canvas-row > .waypoint-horizontal > .main-center {
+  z-index: 101;
+  pointer-events: none;
+}
+
+.luna-root.is-fullscreen-open .steps-info-dock,
+.luna-root.is-fullscreen-open .stage-tools,
+.luna-root.is-fullscreen-open .stage-frame-overlay {
+  visibility: hidden;
+}
+
+.luna-canvas-row > .waypoint-horizontal > .main-center > .luna-design-surface.is-fullscreen-lift {
+  pointer-events: auto;
+  box-shadow: 0 1.25rem 3.75rem rgba(0, 0, 0, 0.45);
+}
+
 /* Slight darken on all interactive buttons */
 .luna-root button:hover:not(:disabled):not([aria-disabled='true']) {
   filter: brightness(0.9);
@@ -973,6 +994,14 @@
   padding: var(--luna-fullscreen-pad);
   box-sizing: border-box;
   pointer-events: auto;
+  overflow: hidden;
+}
+
+.luna-fullscreen-overlay__frame.is-slot {
+  visibility: hidden;
+  background: transparent;
+  box-shadow: none;
+  pointer-events: none;
 }
 
 .luna-fullscreen-overlay__backdrop {
