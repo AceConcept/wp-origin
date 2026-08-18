@@ -9,8 +9,6 @@ import {
   getStageEmbedOrigin,
   getWaypointMode,
   polarFlowIdFromHash,
-  STAGE_PLACEHOLDER_IMAGE,
-  STAGE_PREVIEW_IMAGES,
   stageEmbedUrlForStep,
   stepMarkIconForStep,
 } from './data/steps.js'
@@ -54,8 +52,7 @@ const state = {
   managerOpen: false,
   fullscreenOpen: false,
   stageEmbedVisible: true,
-  stageSource: 'image', // 'image' | 'iframe'
-  stageImageIndex: 0,
+  stageSource: 'iframe', // 'image' | 'iframe'
   embedSlot: 0,
   embedUrls: ['', ''],
   pendingEmbedSlot: null,
@@ -79,26 +76,8 @@ function currentStepIndex() {
   return Math.max(0, flowSteps().findIndex((s) => s.id === state.stepId))
 }
 
-function currentStageImage() {
-  return STAGE_PREVIEW_IMAGES[state.stageImageIndex] ?? STAGE_PLACEHOLDER_IMAGE
-}
-
 function useStageIframe() {
   return state.stageSource === 'iframe'
-}
-
-function cycleStageImage() {
-  if (useStageIframe()) {
-    setStageSource('image')
-    return
-  }
-  const total = STAGE_PREVIEW_IMAGES.length
-  if (total < 2) return
-  state.stageImageIndex = (state.stageImageIndex + 1) % total
-  const src = currentStageImage()
-  root.querySelectorAll('.stepscreen-stage-image').forEach((img) => {
-    img.setAttribute('src', src)
-  })
 }
 
 function setStageSource(source) {
@@ -409,27 +388,25 @@ function navbarHtml() {
 }
 
 function stageToolsHtml() {
-  const iframeOn = useStageIframe()
+  const caseStudyUrl = getWaypointMode(state.projectId).caseStudyUrl
   return `
     <div class="stage-tools" data-region="stage-tools" aria-label="Stage tools">
       <button type="button" class="stage-tools__btn" data-action="open-fullscreen" aria-label="Expand">
         <img src="/Icons/stage/expand-icon.svg" alt="" draggable="false" aria-hidden="true" />
       </button>
-      <button type="button" class="stage-tools__btn" data-action="view-info" aria-label="Information">
-        <img src="/Icons/stage/info-icon.svg" alt="" draggable="false" aria-hidden="true" />
-      </button>
-      <button
-        type="button"
-        class="stage-tools__btn${iframeOn ? ' is-active' : ''}"
-        data-action="toggle-stage-iframe"
-        aria-label="${iframeOn ? 'Show stage image' : 'Show live iframe'}"
-        aria-pressed="${iframeOn}"
+      ${
+        caseStudyUrl
+          ? `<a
+        class="stage-tools__btn"
+        href="${caseStudyUrl}"
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="Case study"
       >
-        <img src="/Icons/stage/iframe-icon.svg" alt="" draggable="false" aria-hidden="true" />
-      </button>
-      <button type="button" class="stage-tools__btn" data-action="cycle-stage-image" aria-label="Switch stage image">
-        <img src="/Icons/stage/switch-icon.svg" alt="" draggable="false" aria-hidden="true" />
-      </button>
+        <img src="/Icons/stage/info-icon.svg" alt="" draggable="false" aria-hidden="true" />
+      </a>`
+          : ''
+      }
     </div>
   `
 }
@@ -455,14 +432,7 @@ function stageHtml() {
     return `
     <div class="viewport" data-region="stage">
       <div id="artboard" class="artboard">
-        <div class="stepscreen-embed-shell" data-stage-shell>
-          <img
-            class="stepscreen-embed stepscreen-stage-image"
-            src="${currentStageImage()}"
-            alt="Stage preview"
-            draggable="false"
-          />
-        </div>
+        <div class="stepscreen-embed-shell" data-stage-shell></div>
       </div>
     </div>
   `
@@ -506,7 +476,6 @@ function fullscreenHtml() {
       <button type="button" class="luna-fullscreen-overlay__backdrop" data-action="close-fullscreen" aria-label="Close full screen"></button>
       <div class="luna-fullscreen-overlay__layout">
         <button type="button" class="luna-fullscreen-overlay__close" data-action="close-fullscreen" aria-label="Close">Close</button>
-        <img class="luna-fullscreen-overlay__frame stepscreen-stage-image" src="${currentStageImage()}" alt="Stage preview" draggable="false" />
       </div>
     </div>
   `
@@ -1013,15 +982,8 @@ function onRootClick(event) {
     patchFullscreen()
     return
   }
-  if (action === 'view-info') {
-    return
-  }
   if (action === 'toggle-stage-iframe') {
     toggleStageIframe()
-    return
-  }
-  if (action === 'cycle-stage-image') {
-    cycleStageImage()
     return
   }
   if (action === 'close-fullscreen') {

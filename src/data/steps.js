@@ -1,10 +1,3 @@
-/** Shared stage preview images (image-swap mode). */
-export const STAGE_PLACEHOLDER_IMAGE = '/stage/0106.73d441.jpg'
-export const STAGE_PREVIEW_IMAGES = [
-  STAGE_PLACEHOLDER_IMAGE,
-  '/stage/HP0_KKgbMAELkUu.jpeg',
-]
-
 export const DEFAULT_PROJECT_ID = 'steps-waypoint'
 
 const STEP_IMAGE_FILES = {
@@ -119,6 +112,7 @@ const POLAR_MODE = {
   crumb: 'polar-systems',
   description:
     'Anomaly catalog, incident graph, and host telemetry for Case #8846 on db-core-02.internal.',
+  caseStudyUrl: 'https://atencium-ui.com/#gallery/polar-systems',
   embedOrigin: 'https://polarsysv2.guildconcept.workers.dev',
   urlStyle: 'polar-hash',
   stepTitles: ['Anomaly', 'Incident', 'Monitor'],
