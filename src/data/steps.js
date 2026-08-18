@@ -192,10 +192,62 @@ const LUNA_MODE = {
   ],
 }
 
+const NODE_MENU_MODE = {
+  id: 'node-menu',
+  kind: 'Waypoint',
+  title: 'Node Menu',
+  subtitle: 'Integrations',
+  crumb: 'node-menu',
+  description:
+    'Integrations hub and the Python node view for configuration and workflow setup.',
+  embedOrigin: 'https://integration-node-view.vercel.app',
+  urlStyle: 'path',
+  stepTitles: ['Integrations', 'Python integration'],
+  iframePath: {
+    1: '/',
+    2: '/integration/python-1',
+  },
+  swatches: ['#e8e4f0', '#cab6e0'],
+  stepCopy: [
+    {
+      onScreen: [
+        'The iframe opens on the integrations hub. Processing nodes sit in one catalog, scaled to the stage.',
+        'This is the origin of the node run. Browse the available integrations here before opening a single node.',
+      ],
+      movingForward:
+        'Select the Python integration in the iframe to open its node configuration view.',
+    },
+    {
+      onScreen: [
+        'The Python integration view is open. Node configuration and workflow setup live on this screen.',
+        'This is the last beat of the Node Menu run. The hub and the Python node are one flow told in two screens.',
+      ],
+      movingForward:
+        'Tune the Python node in the iframe, or step back to the hub if you need another integration.',
+    },
+  ],
+}
+
 export const WAYPOINT_MODES = {
   [STEPS_MODE.id]: STEPS_MODE,
   [POLAR_MODE.id]: POLAR_MODE,
   [LUNA_MODE.id]: LUNA_MODE,
+  [NODE_MENU_MODE.id]: NODE_MENU_MODE,
+}
+
+export function isWaypointId(id) {
+  return Boolean(WAYPOINT_MODES[id])
+}
+
+export function waypointIdFromPath(pathname) {
+  const slug = String(pathname || '')
+    .split('/')
+    .filter(Boolean)[0]
+  return isWaypointId(slug) ? slug : DEFAULT_PROJECT_ID
+}
+
+export function pathForWaypoint(projectId) {
+  return `/${isWaypointId(projectId) ? projectId : DEFAULT_PROJECT_ID}`
 }
 
 const FLOW_BY_PROJECT = Object.fromEntries(

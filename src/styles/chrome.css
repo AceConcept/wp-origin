@@ -603,6 +603,21 @@
   overflow: visible; /* let steps-info-dock paint through waypoint-horizontal bottom pad */
 }
 
+.luna-canvas-row > .board-rainbow {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: auto;
+  z-index: 90; /* header is 44 */
+  display: block;
+  width: 34.1875rem; /* 547px */
+  height: 15.375rem; /* 246px */
+  margin: 0;
+  pointer-events: none;
+  object-fit: none;
+  object-position: top right;
+}
+
 .luna-canvas-row > .waypoint-horizontal > .main-center > .luna-design-surface {
   position: absolute;
   top: var(--luna-stage-gap-top); /* 37px below header */
@@ -799,11 +814,22 @@
       var(--luna-header-switch-top)
   );
   pointer-events: none;
+  opacity: 1;
+  transition: opacity 480ms ease;
 }
 
 .steps-info-dock > .header-switch-wrap,
 .steps-info-dock > .steps-info {
   pointer-events: auto;
+}
+
+.steps-info-dock.is-swap-locked > .header-switch-wrap,
+.steps-info-dock.is-swap-locked > .steps-info {
+  pointer-events: none;
+}
+
+.steps-info-dock.is-swap-locked {
+  opacity: 0.82;
 }
 
 .steps-info-dock > .header-switch-wrap {

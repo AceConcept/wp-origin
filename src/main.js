@@ -2,15 +2,16 @@ import { animate, stagger } from 'motion'
 import { bindDocumentScale } from './scale.js'
 import { WAYPOINT_PROJECTS } from './data/projects.js'
 import {
-  DEFAULT_PROJECT_ID,
   embedExtrasForStep,
   flowSidebarItemsFor,
   flowStepsFor,
   getStageEmbedOrigin,
   getWaypointMode,
+  pathForWaypoint,
   polarFlowIdFromHash,
   stageEmbedUrlForStep,
   stepMarkIconForStep,
+  waypointIdFromPath,
 } from './data/steps.js'
 import {
   postStageEmbedStep,
@@ -21,7 +22,9 @@ import {
 } from './embed-bridge.js'
 import './styles/main.css'
 
-const STAGE_STEP_CROSSFADE_MS = 320
+const STAGE_STEP_CROSSFADE_MS = 860
+const SWAP_LOAD_MIN_MS = 520
+const SWAP_LOAD_MAX_MS = 12000
 const PANEL_LEAVE_MS = 0.2
 const PANEL_ENTER_MS = 0.38
 const PANEL_STAGGER_S = 0.05
@@ -38,25 +41,30 @@ const HOLD_MS = 250
 const FADE_MS = 400
 
 const root = document.getElementById('root')
+const initialProjectId = waypointIdFromPath(window.location.pathname)
 
 const state = {
   mounted: false,
   loaded: false,
   loadProgress: 0,
-  stepId: polarFlowIdFromHash(window.location.hash, DEFAULT_PROJECT_ID),
+  stepId: polarFlowIdFromHash(window.location.hash, initialProjectId),
   headerMode: 'information', // 'information' | 'waypoint-select'
   panelTransitioning: false,
   pendingHeaderMode: null,
   chromeDirty: false,
-  projectId: DEFAULT_PROJECT_ID,
+  projectId: initialProjectId,
   managerOpen: false,
   fullscreenOpen: false,
   stageEmbedVisible: true,
   stageSource: 'iframe', // 'image' | 'iframe'
   embedSlot: 0,
   embedUrls: ['', ''],
+  embedRevealed: false,
   pendingEmbedSlot: null,
   pendingEmbedSrc: null,
+  waypointLoading: false,
+  waypointLoadStartedAt: 0,
+  waypointLoadTimer: 0,
 }
 
 function flowSteps() {
@@ -74,6 +82,26 @@ function currentStep() {
 
 function currentStepIndex() {
   return Math.max(0, flowSteps().findIndex((s) => s.id === state.stepId))
+}
+
+function writeWaypointLocation(projectId, stepId, { replace = false } = {}) {
+  const url = new URL(window.location.href)
+  url.pathname = pathForWaypoint(projectId)
+  url.hash = `#${stepId}`
+  const next = `${url.pathname}${url.search}${url.hash}`
+  const current = `${window.location.pathname}${window.location.search}${window.location.hash}`
+  if (next === current) return
+  if (replace) history.replaceState(null, '', url)
+  else history.pushState(null, '', url)
+}
+
+function syncFromLocation() {
+  const nextProject = waypointIdFromPath(window.location.pathname)
+  const nextStep = polarFlowIdFromHash(window.location.hash, nextProject)
+  if (nextProject !== state.projectId) {
+    selectProject(nextProject, { syncUrl: false })
+  }
+  goToStep(nextStep, { syncHash: false })
 }
 
 function useStageIframe() {
@@ -114,38 +142,41 @@ function ensureEmbedUrls() {
   const src = stageEmbedUrlForStep(state.projectId, state.stepId)
   if (!state.embedUrls[0]) {
     state.embedUrls = [src, src]
+    state.pendingEmbedSlot = 0
+    state.pendingEmbedSrc = src
     return
   }
   const active = state.embedSlot
-  if (state.embedUrls[active] === src) return
+  if (state.embedUrls[active] === src) {
+    if (state.waypointLoading) finishWaypointSwapLoad()
+    return
+  }
   const next = active === 0 ? 1 : 0
   state.embedUrls[next] = src
   state.pendingEmbedSlot = next
   state.pendingEmbedSrc = src
   const frame = root.querySelector(`iframe[data-embed-frame="${next}"]`)
-  if (frame && frame.getAttribute('src') !== src) {
-    frame.setAttribute('src', src)
+  if (!frame) return
+  if (frame.getAttribute('src') === src) {
+    onEmbedReady(next)
+    return
   }
+  frame.setAttribute('src', src)
 }
 
 function goToStep(id, { syncHash = true } = {}) {
   if (!flowSteps().some((s) => s.id === id)) return
   if (state.stepId === id) {
-    state.managerOpen = false
-    patchChrome()
+    if (state.managerOpen) {
+      state.managerOpen = false
+      patchChrome()
+    }
     return
   }
   const prevStepId = state.stepId
   state.stepId = id
   state.managerOpen = false
-  if (syncHash) {
-    const hash = `#${id}`
-    if (window.location.hash !== hash) {
-      const url = new URL(window.location.href)
-      url.hash = hash
-      history.pushState(null, '', url)
-    }
-  }
+  if (syncHash) writeWaypointLocation(state.projectId, id)
   ensureEmbedUrls()
   const animatedInfoSelect =
     state.headerMode === 'information' &&
@@ -171,16 +202,58 @@ function onEmbedReady(slot) {
   }
   if (state.embedUrls[slot] !== state.pendingEmbedSrc) return
   state.embedSlot = slot
+  state.embedRevealed = true
   state.pendingEmbedSlot = null
   state.pendingEmbedSrc = null
   syncEmbedLayers()
   postStageEmbedStep(currentStepIndex() + 1, embedExtrasForStep(state.projectId, state.stepId))
+  if (state.waypointLoading) finishWaypointSwapLoad()
+}
+
+function syncSwapLoadingUi() {
+  const overlay = root.querySelector('[data-region="swap-load"]')
+  if (overlay) {
+    if (state.waypointLoading) {
+      overlay.classList.remove('is-on')
+      void overlay.offsetWidth
+      overlay.classList.add('is-on')
+    } else {
+      overlay.classList.remove('is-on')
+    }
+    overlay.setAttribute('aria-hidden', state.waypointLoading ? 'false' : 'true')
+  }
+  const dock = root.querySelector('[data-region="steps-info-dock"]')
+  if (dock) {
+    dock.classList.toggle('is-swap-locked', state.waypointLoading)
+    dock.setAttribute('aria-busy', state.waypointLoading ? 'true' : 'false')
+  }
+}
+
+function startWaypointSwapLoad() {
+  window.clearTimeout(state.waypointLoadTimer)
+  state.waypointLoading = true
+  state.waypointLoadStartedAt = performance.now()
+  syncSwapLoadingUi()
+  state.waypointLoadTimer = window.setTimeout(() => {
+    if (state.waypointLoading) finishWaypointSwapLoad()
+  }, SWAP_LOAD_MAX_MS)
+}
+
+function finishWaypointSwapLoad() {
+  if (!state.waypointLoading) return
+  const wait = Math.max(0, SWAP_LOAD_MIN_MS - (performance.now() - state.waypointLoadStartedAt))
+  window.clearTimeout(state.waypointLoadTimer)
+  state.waypointLoadTimer = window.setTimeout(() => {
+    state.waypointLoading = false
+    state.waypointLoadTimer = 0
+    syncSwapLoadingUi()
+  }, wait)
 }
 
 function syncEmbedLayers() {
   root.querySelectorAll('[data-embed-slot]').forEach((el) => {
     const slot = Number(el.getAttribute('data-embed-slot'))
-    el.classList.toggle('is-active', slot === state.embedSlot)
+    el.classList.toggle('is-active', state.embedRevealed && slot === state.embedSlot)
   })
   const activeFrame = root.querySelector(
     `[data-embed-slot="${state.embedSlot}"] iframe`,
@@ -244,7 +317,7 @@ function headerSwitchHtml() {
 
 function stepsInfoDockHtml() {
   return `
-    <div class="steps-info-dock" data-region="steps-info-dock">
+    <div class="steps-info-dock${state.waypointLoading ? ' is-swap-locked' : ''}" data-region="steps-info-dock" aria-busy="${state.waypointLoading}">
       ${headerSwitchHtml()}
       ${stepsInfoPanel()}
     </div>
@@ -274,9 +347,9 @@ function projectSelectPanel() {
               const isActive = project.id === state.projectId
               const assets = projectCardAssets(isActive)
               return `
-              <button
-                type="button"
+              <a
                 class="project-select__card${isActive ? ' is-active' : ''}"
+                href="${pathForWaypoint(project.id)}#1"
                 data-action="select-project"
                 data-project="${project.id}"
                 data-panel-animate
@@ -294,7 +367,7 @@ function projectSelectPanel() {
                 <span class="project-select__card-rule" aria-hidden="true"></span>
                 <span class="project-select__body">${project.description}</span>
                 <span class="project-select__glyph" aria-hidden="true"></span>
-              </button>
+              </a>
             `
             }).join('')}
           </div>
@@ -447,7 +520,7 @@ function stageHtml() {
             ${[0, 1]
               .map(
                 (slot) => `
-              <div class="stepscreen-embed-layer${slot === state.embedSlot ? ' is-active' : ''}" data-embed-slot="${slot}">
+              <div class="stepscreen-embed-layer${state.embedRevealed && slot === state.embedSlot ? ' is-active' : ''}" data-embed-slot="${slot}">
                 <iframe
                   class="stepscreen-embed"
                   src="${state.embedUrls[slot]}"
@@ -488,6 +561,27 @@ function fullscreenHtml() {
         <button type="button" class="luna-fullscreen-overlay__close" data-action="close-fullscreen" aria-label="Close">Close</button>
         <iframe class="luna-fullscreen-overlay__frame" src="${src}" title="Atencium steps fullscreen" allow="fullscreen"></iframe>
       </div>
+    </div>
+  `
+}
+
+function stageSwapLoadHtml() {
+  return `
+    <div
+      class="stage-swap-load${state.waypointLoading ? ' is-on' : ''}"
+      data-region="swap-load"
+      aria-hidden="${state.waypointLoading ? 'false' : 'true'}"
+      aria-live="polite"
+    >
+      <div class="stage-swap-load__fill" aria-hidden="true"></div>
+      <div class="stage-swap-load__brand">
+        <div class="stage-swap-load__icons" aria-hidden="true">
+          <img class="stage-swap-load__icon" src="/loadingscrn/website-icon.svg" alt="" width="36" height="36" draggable="false" />
+          <img class="stage-swap-load__icon" src="/loadingscrn/waypoint-icon.svg" alt="" width="36" height="36" draggable="false" />
+        </div>
+        <p class="stage-swap-load__status">// Loading Waypoint...</p>
+      </div>
+      <span class="stage-swap-load__bar" aria-hidden="true"></span>
     </div>
   `
 }
@@ -546,13 +640,14 @@ function appHtml() {
           <div class="waypoint-horizontal">
             <div class="main-side-left" aria-hidden="true"></div>
             <div class="main-center">
-              <div class="luna-design-surface">${stageHtml()}</div>
+              <div class="luna-design-surface">${stageHtml()}${stageSwapLoadHtml()}</div>
               ${stageToolsHtml()}
               ${stageFrameOverlayHtml()}
               ${stepsInfoDockHtml()}
             </div>
             <div class="main-side-right" aria-hidden="true"></div>
           </div>
+          <img class="board-rainbow" src="/fx/rainbow-effect.png" alt="" width="547" height="246" draggable="false" aria-hidden="true" />
         </div>
         <div data-region="fullscreen-host">${fullscreenHtml()}</div>
       </div>
@@ -725,26 +820,19 @@ function animateProjectSwap(activating, deactivating) {
   }
 }
 
-function selectProject(id) {
+function selectProject(id, { syncUrl = true } = {}) {
   if (!WAYPOINT_PROJECTS.some((p) => p.id === id)) return
   const same = state.projectId === id
   if (same && useStageIframe()) return
+  if (state.waypointLoading && !same) return
 
   const prevId = state.projectId
   if (!same) {
     state.projectId = id
     state.stepId = flowStepsFor(id)[0].id
     state.managerOpen = false
-    const hash = `#${state.stepId}`
-    if (window.location.hash !== hash) {
-      const url = new URL(window.location.href)
-      url.hash = hash
-      history.pushState(null, '', url)
-    }
-    state.embedSlot = 0
-    state.embedUrls = ['', '']
-    state.pendingEmbedSlot = null
-    state.pendingEmbedSrc = null
+    if (syncUrl) writeWaypointLocation(state.projectId, state.stepId)
+    startWaypointSwapLoad()
   }
 
   setEmbedProjectId(state.projectId)
@@ -777,7 +865,11 @@ function selectProject(id) {
     patchChrome()
   }
 
-  patchStage()
+  if (root.querySelector('iframe[data-embed-frame]')) {
+    replaceRegion('[data-region="stage-tools"]', stageToolsHtml())
+  } else {
+    patchStage()
+  }
   patchFullscreen()
 }
 
@@ -948,6 +1040,16 @@ function onRootClick(event) {
   }
 
   const action = target.getAttribute('data-action')
+  if (
+    state.waypointLoading &&
+    (action === 'select-project' ||
+      action === 'set-header-mode' ||
+      action === 'select-step' ||
+      action === 'view-case-study')
+  ) {
+    event.preventDefault()
+    return
+  }
   if (action === 'reload-page') {
     window.location.reload()
     return
@@ -965,6 +1067,8 @@ function onRootClick(event) {
     return
   }
   if (action === 'select-project') {
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+    event.preventDefault()
     const id = target.getAttribute('data-project')
     if (!WAYPOINT_PROJECTS.some((p) => p.id === id)) return
     if (state.projectId === id) return
@@ -1066,6 +1170,7 @@ function runLoadscreen() {
 }
 
 function boot() {
+  writeWaypointLocation(state.projectId, state.stepId, { replace: true })
   setEmbedProjectId(state.projectId)
   bindDocumentScale()
   preloadProjectSelectAssets()
@@ -1074,14 +1179,11 @@ function boot() {
 
   root.addEventListener('click', onRootClick)
   document.addEventListener('keydown', onKeyDown)
-  window.addEventListener('hashchange', () => {
-    goToStep(polarFlowIdFromHash(window.location.hash, state.projectId), { syncHash: false })
-  })
-  window.addEventListener('popstate', () => {
-    goToStep(polarFlowIdFromHash(window.location.hash, state.projectId), { syncHash: false })
-  })
+  window.addEventListener('hashchange', syncFromLocation)
+  window.addEventListener('popstate', syncFromLocation)
 
   window.addEventListener('message', (event) => {
+    if (state.waypointLoading) return
     if (!useStageIframe()) return
     if (event.origin !== getStageEmbedOrigin(state.projectId)) return
     if (event.data?.type !== STAGE_EMBED_STEP_CHANGED) return
@@ -1103,6 +1205,7 @@ function boot() {
   })
 
   window.setInterval(() => {
+    if (state.waypointLoading) return
     if (useStageIframe()) requestStageEmbedStep()
   }, 400)
 }

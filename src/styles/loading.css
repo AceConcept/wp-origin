@@ -214,3 +214,119 @@
     animation-duration: 200ms;
   }
 }
+
+/* Compact overlay while a waypoint iframe swap is in flight */
+.stage-swap-load {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity 480ms ease,
+    visibility 480ms ease;
+}
+
+.stage-swap-load.is-on {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.stage-swap-load__fill {
+  position: absolute;
+  inset: 0;
+  background-color: rgba(255, 255, 255, 0.82);
+  background-image: url('/loadingscrn/ldingBG.png');
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: cover;
+}
+
+.stage-swap-load__brand {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.stage-swap-load__icons {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.8125rem;
+}
+
+.stage-swap-load__icon {
+  display: block;
+  width: 2.25rem;
+  height: 2.25rem;
+}
+
+.stage-swap-load__status {
+  margin: 0;
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 1rem;
+  font-weight: 400;
+  line-height: 1.2;
+  color: #333;
+  white-space: nowrap;
+}
+
+.stage-swap-load.is-on .stage-swap-load__status {
+  animation: stage-swap-pulse 1s ease-in-out infinite;
+}
+
+.stage-swap-load__bar {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  z-index: 2;
+  height: 0.25rem;
+  width: 0;
+  background: #f5e642;
+}
+
+.stage-swap-load.is-on .stage-swap-load__bar {
+  animation: stage-swap-bar 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes stage-swap-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.72;
+  }
+}
+
+@keyframes stage-swap-bar {
+  from {
+    width: 0;
+  }
+  to {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stage-swap-load {
+    transition: none;
+  }
+
+  .stage-swap-load.is-on .stage-swap-load__status,
+  .stage-swap-load.is-on .stage-swap-load__bar {
+    animation: none;
+  }
+
+  .stage-swap-load.is-on .stage-swap-load__bar {
+    width: 100%;
+  }
+}
