@@ -45,7 +45,7 @@
 /* CTA + stage tools: keep label/icons unchanged */
 .luna-root button.steps-info__cta:hover:not(:disabled):not([aria-disabled='true']),
 .luna-root button.stage-tools__btn:hover:not(:disabled):not([aria-disabled='true']),
-.luna-root button.project-select__card.is-active:hover:not(:disabled):not([aria-disabled='true']),
+.luna-root button.project-select__card:hover:not(:disabled):not([aria-disabled='true']),
 .luna-root button.steps-info__step:hover:not(:disabled):not([aria-disabled='true']) {
   filter: none;
 }
@@ -238,6 +238,12 @@
 
 .luna-canvas-row > .luna-absolute-pad .header-status-crumb.is-current {
   pointer-events: none;
+}
+
+.luna-canvas-row > .luna-absolute-pad .header-status-crumb.is-current > span,
+.luna-canvas-row > .luna-absolute-pad .header-status-crumb.is-current > a,
+.luna-canvas-row > .luna-absolute-pad .header-status-crumb.is-current > button {
+  text-decoration: none;
 }
 
 .luna-canvas-row > .luna-absolute-pad .header-status-crumb + .header-status-crumb::before {

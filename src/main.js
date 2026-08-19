@@ -376,11 +376,37 @@ function projectSelectPanel() {
           </div>
         </div>
       </div>
-      <button type="button" class="steps-info__cta" data-action="view-case-study" data-panel-animate>
-        <span>Visit Main Site</span>
-      </button>
+      ${visitMainSiteCtaHtml()}
     </section>
   `
+}
+
+function visitMainSiteCtaHtml() {
+  return `
+      <a
+        class="steps-info__cta"
+        href="https://www.atencium-ui.com"
+        data-panel-animate
+      >
+        <span>Visit Main Site</span>
+      </a>
+  `
+}
+
+function stepsInfoCtaHtml() {
+  const caseStudyUrl = getWaypointMode(state.projectId).caseStudyUrl
+  if (caseStudyUrl) {
+    return `
+      <a
+        class="steps-info__cta"
+        href="${caseStudyUrl}"
+        data-panel-animate
+      >
+        <span>View Case Study</span>
+      </a>
+    `
+  }
+  return visitMainSiteCtaHtml()
 }
 
 function stepsInfoPanel() {
@@ -425,9 +451,7 @@ function stepsInfoPanel() {
           </div>
         </div>
       </div>
-      <button type="button" class="steps-info__cta" data-action="view-case-study" data-panel-animate>
-        <span>View Case Study</span>
-      </button>
+      ${stepsInfoCtaHtml()}
     </section>
   `
 }
