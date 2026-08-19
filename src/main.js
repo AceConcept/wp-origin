@@ -470,7 +470,7 @@ function navbarHtml() {
             draggable="false"
             aria-hidden="true"
           />
-          <button type="button" class="header-title" data-action="reload-page">Waypoint Manager</button>
+          <button type="button" class="header-title" data-action="reload-page">Waypoint Origin</button>
           <nav class="header-status" aria-label="Breadcrumb">
             <ol class="header-status-crumbs">
               <li class="header-status-crumb"><a href="https://www.atencium-ui.com">atencium-ui</a></li>

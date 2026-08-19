@@ -116,13 +116,15 @@
   flex-direction: column;
   align-items: flex-start;
   gap: 1.0625rem;
+  transform: scale(0.8);
+  transform-origin: top left;
 }
 
 .loadscreen__icons {
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 13px;
+  gap: 5px;
 }
 
 .loadscreen__icon-img {
@@ -254,13 +256,15 @@
   flex-direction: column;
   align-items: flex-start;
   gap: 0.75rem;
+  transform: scale(0.8);
+  transform-origin: center center;
 }
 
 .stage-swap-load__icons {
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 0.8125rem;
+  gap: 5px;
 }
 
 .stage-swap-load__icon {
