@@ -152,7 +152,7 @@ const LUNA_MODE = {
   id: 'luna-base',
   kind: 'Waypoint',
   title: 'Luna Base',
-  subtitle: 'Editor',
+  subtitle: 'Code Editor',
   crumb: 'luna-base',
   description:
     'Code editor origin, installed extensions, and the Python Environments download flow.',
@@ -196,7 +196,7 @@ const NODE_MENU_MODE = {
   id: 'node-menu',
   kind: 'Waypoint',
   title: 'Node Menu',
-  subtitle: 'Integrations',
+  subtitle: 'App Integration Flow',
   crumb: 'node-menu',
   description:
     'Integrations hub and the Python node view for configuration and workflow setup.',
