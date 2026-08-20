@@ -1318,7 +1318,7 @@ function onKeyDown(event) {
 }
 
 const PROJECT_SELECT_ASSETS = [
-  '/Icons/project-select/inactive-bg.png',
+  '/Icons/project-select/wp-inactive-bg.png',
   '/Icons/project-select/active-crd-bg.png',
   '/Icons/project-select/small-circle.svg',
   '/Icons/project-select/inactive-circle.svg',
@@ -1326,8 +1326,14 @@ const PROJECT_SELECT_ASSETS = [
   '/Icons/project-select/inactive-accent.svg',
 ]
 
+const STEPS_INFO_PANEL_ASSETS = [
+  '/Icons/steps-info/info-bg-temp.png',
+  '/Icons/steps-info/wp-select-temp.png',
+]
+
 function preloadProjectSelectAssets() {
-  PROJECT_SELECT_ASSETS.forEach((src) => {
+  const assets = [...PROJECT_SELECT_ASSETS, ...STEPS_INFO_PANEL_ASSETS]
+  assets.forEach((src) => {
     const img = new Image()
     img.src = src
   })

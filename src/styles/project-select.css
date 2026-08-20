@@ -1,5 +1,13 @@
 /* Waypoint Project Select — shown in the steps-info rail */
 
+.steps-info--select {
+  background-color: transparent;
+  background-image: url('/Icons/steps-info/wp-select-temp.png');
+  background-repeat: no-repeat;
+  background-position: center top;
+  background-size: 100% 100%;
+}
+
 .steps-info--select > .side-info-content,
 .steps-info--select > .steps-info__cta {
   position: relative;
@@ -96,7 +104,7 @@
   border: 0;
   border-radius: 3px;
   background-color: #d8d8d8;
-  background-image: url('/Icons/project-select/inactive-bg.png');
+  background-image: url('/Icons/project-select/wp-inactive-bg.png');
   background-repeat: no-repeat;
   background-position: 100% 0;
   background-size: 100% 100%;
