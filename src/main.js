@@ -817,8 +817,8 @@ function animateProjectSwap(activating, deactivating) {
     animate(
       deactivating,
       {
-        transform: ['scale(1)', 'scale(0.985)', 'scale(1)'],
-        opacity: [1, 0.88, 1],
+        transform: ['scale(1)', 'scale(0.988)', 'scale(1)'],
+        opacity: [1, 0.904, 1],
       },
       { duration: 0.22, easing: [0.4, 0, 1, 1] },
     )
@@ -828,8 +828,8 @@ function animateProjectSwap(activating, deactivating) {
     animate(
       activating,
       {
-        transform: ['scale(0.97)', 'scale(1.02)', 'scale(1)'],
-        opacity: [0.82, 1, 1],
+        transform: ['scale(0.976)', 'scale(1.016)', 'scale(1)'],
+        opacity: [0.856, 1, 1],
       },
       { duration: 0.32, easing: [0.22, 1, 0.36, 1] },
     )
