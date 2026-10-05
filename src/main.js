@@ -488,6 +488,9 @@ function navbarHtml() {
             <ol class="header-status-crumbs">
               <li class="header-status-crumb"><a href="https://www.atencium-ui.com">atencium-ui</a></li>
               <li class="header-status-crumb">
+                <button type="button" data-action="set-header-mode" data-mode="waypoint-select">waypoint-select</button>
+              </li>
+              <li class="header-status-crumb">
                 <button type="button" data-action="select-step" data-step="1">${getWaypointMode(state.projectId).crumb}</button>
               </li>
               <li class="header-status-crumb is-current" aria-current="page"><span>${crumbSlug(step.title)}</span></li>
