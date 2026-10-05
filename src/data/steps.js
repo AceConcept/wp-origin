@@ -64,12 +64,12 @@ const STEPS_MODE = {
   crumb: 'steps-waypoint',
   description:
     'Five-step slot flow. An introduction, then the story column, steps list, in-frame arrows, and Waypoint Select, all in sync with the live iframe.',
-  embedOrigin: 'https://steps-project-slot.vercel.app',
-  urlStyle: 'hash',
+  embedOrigin: 'https://stepsv2.guildconcept.workers.dev',
+  openInNewTabUrl: 'https://stepsv2.guildconcept.workers.dev/',
+  urlStyle: 'path',
   stepTitles: ['Introduction', 'Story Column', 'Steps List', 'Frame Arrows', 'Waypoint Select'],
-  // The slot app has four screens; the introduction shares its first screen with Story Column.
-  embedSteps: [1, 1, 2, 3, 4],
-  iframePath: { 1: '#1', 2: '#1', 3: '#2', 4: '#3', 5: '#4' },
+  // stepsv2 has no per-step URLs, so every step shares one frame.
+  iframePath: { 1: '/', 2: '/', 3: '/', 4: '/', 5: '/' },
   swatches: ['#cab6e0', '#e8e4f0', '#cab6e0', '#e8e4f0', '#cab6e0'],
   stepCopy: [
     {

@@ -25,6 +25,8 @@ import {
 import './styles/main.css'
 
 const STAGE_STEP_CROSSFADE_MS = 860
+/** Ignore embed step reports this long after a shell-side step change (stale poll replies). */
+const EMBED_ECHO_HOLD_MS = 700
 const SWAP_LOAD_MIN_MS = 520
 const SWAP_LOAD_MAX_MS = 12000
 const PANEL_LEAVE_MS = 0.2
@@ -70,6 +72,7 @@ const state = {
   waypointLoading: false,
   waypointLoadStartedAt: 0,
   waypointLoadTimer: 0,
+  embedHoldUntil: 0,
 }
 
 function flowSteps() {
@@ -169,8 +172,9 @@ function ensureEmbedUrls() {
   frame.setAttribute('src', src)
 }
 
-function goToStep(id, { syncHash = true } = {}) {
+function goToStep(id, { syncHash = true, fromEmbed = false } = {}) {
   if (!flowSteps().some((s) => s.id === id)) return
+  if (!fromEmbed) state.embedHoldUntil = performance.now() + EMBED_ECHO_HOLD_MS
   if (state.stepId === id) {
     if (state.managerOpen) {
       state.managerOpen = false
@@ -497,12 +501,25 @@ function navbarHtml() {
 }
 
 function stageToolsHtml() {
-  const caseStudyUrl = getWaypointMode(state.projectId).caseStudyUrl
+  const { caseStudyUrl, openInNewTabUrl } = getWaypointMode(state.projectId)
   return `
     <div class="stage-tools" data-region="stage-tools" aria-label="Stage tools">
       <button type="button" class="stage-tools__btn" data-action="open-fullscreen" aria-label="Expand">
         <img src="/Icons/stage/expand-icon.svg" alt="" draggable="false" aria-hidden="true" />
       </button>
+      ${
+        openInNewTabUrl
+          ? `<a
+        class="stage-tools__btn"
+        href="${openInNewTabUrl}"
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="Open in new tab"
+      >
+        <img src="/Icons/stage/open-new-icon.svg" alt="" draggable="false" aria-hidden="true" />
+      </a>`
+          : ''
+      }
       ${
         caseStudyUrl
           ? `<a
@@ -659,7 +676,7 @@ function loadingHtml() {
 function appHtml() {
   return `
     <div class="app-shell${state.loaded ? ' is-ready' : ''}" data-app-shell>
-      <div class="luna-root">
+      <div class="luna-root" data-project="${state.projectId}">
         <div class="luna-canvas-row">
           ${navbarHtml()}
           <div class="waypoint-horizontal">
@@ -856,6 +873,7 @@ function selectProject(id, { syncUrl = true } = {}) {
     state.projectId = id
     state.stepId = flowStepsFor(id)[0].id
     state.managerOpen = false
+    root.querySelector('.luna-root')?.setAttribute('data-project', id)
     if (syncUrl) writeWaypointLocation(state.projectId, state.stepId)
     startWaypointSwapLoad()
   }
@@ -1410,6 +1428,7 @@ function boot() {
     if (!useStageIframe()) return
     if (event.origin !== getStageEmbedOrigin(state.projectId)) return
     if (event.data?.type !== STAGE_EMBED_STEP_CHANGED) return
+    if (performance.now() < state.embedHoldUntil) return
     const steps = flowSteps()
     const fromRoute =
       typeof event.data.route === 'string'
@@ -1423,7 +1442,7 @@ function boot() {
           ? stepIdForEmbedStep(state.projectId, embedStep, state.stepId)
           : null
     if (!id) return
-    goToStep(id)
+    goToStep(id, { fromEmbed: true })
   })
 
   window.setInterval(() => {

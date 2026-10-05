@@ -1064,6 +1064,24 @@
   pointer-events: auto;
 }
 
+/* Step Waypoint: stage matches the stepsv2 embed's 1920×920 (48:23) canvas */
+.luna-root[data-project='steps-waypoint'] {
+  --luna-center-h: 40.729rem; /* 1360 × 920 / 1920 ≈ 651.67px */
+}
+
+.luna-root[data-project='steps-waypoint'] .luna-fullscreen-overlay__frame {
+  aspect-ratio: 48 / 23;
+  height: min(
+    calc(100dvh - 2 * var(--luna-fullscreen-pad)),
+    calc(
+      (
+          100vw - 2 * var(--luna-fullscreen-pad) - var(--luna-fullscreen-close-w) -
+            var(--luna-fullscreen-gap)
+        ) * 23 / 48
+    )
+  );
+}
+
 .luna-fullscreen-overlay__embed-wrap {
   width: 100%;
   height: 100%;
