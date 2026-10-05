@@ -3,6 +3,7 @@ import { bindDocumentScale } from './scale.js'
 import { WAYPOINT_PROJECTS } from './data/projects.js'
 import {
   embedExtrasForStep,
+  embedStepFor,
   flowSidebarItemsFor,
   flowStepsFor,
   getStageEmbedOrigin,
@@ -10,6 +11,7 @@ import {
   pathForWaypoint,
   polarFlowIdFromHash,
   stageEmbedUrlForStep,
+  stepIdForEmbedStep,
   stepMarkIconForStep,
   waypointIdFromPath,
 } from './data/steps.js'
@@ -192,14 +194,21 @@ function goToStep(id, { syncHash = true } = {}) {
   }
   patchFullscreen()
   if (useStageIframe()) {
-    postStageEmbedStep(currentStepIndex() + 1, embedExtrasForStep(state.projectId, state.stepId))
+    postCurrentEmbedStep()
   }
+}
+
+function postCurrentEmbedStep() {
+  postStageEmbedStep(
+    embedStepFor(state.projectId, state.stepId),
+    embedExtrasForStep(state.projectId, state.stepId),
+  )
 }
 
 function onEmbedReady(slot) {
   if (state.pendingEmbedSlot !== slot) {
     if (slot === state.embedSlot) {
-      postStageEmbedStep(currentStepIndex() + 1, embedExtrasForStep(state.projectId, state.stepId))
+      postCurrentEmbedStep()
     }
     return
   }
@@ -209,7 +218,7 @@ function onEmbedReady(slot) {
   state.pendingEmbedSlot = null
   state.pendingEmbedSrc = null
   syncEmbedLayers()
-  postStageEmbedStep(currentStepIndex() + 1, embedExtrasForStep(state.projectId, state.stepId))
+  postCurrentEmbedStep()
   if (state.waypointLoading) finishWaypointSwapLoad()
 }
 
@@ -1406,13 +1415,12 @@ function boot() {
       typeof event.data.route === 'string'
         ? polarFlowIdFromHash(`#/${event.data.route}`, state.projectId)
         : null
+    const embedStep = Number(event.data.step)
     const id =
       fromRoute && steps.some((s) => s.id === fromRoute)
         ? fromRoute
-        : Number.isFinite(Number(event.data.step)) &&
-            Number(event.data.step) >= 1 &&
-            Number(event.data.step) <= steps.length
-          ? String(event.data.step)
+        : Number.isInteger(embedStep)
+          ? stepIdForEmbedStep(state.projectId, embedStep, state.stepId)
           : null
     if (!id) return
     goToStep(id)

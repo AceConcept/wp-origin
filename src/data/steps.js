@@ -10,6 +10,7 @@ const STEP_MARK_ICONS = {
   2: '/Icons/steps-info/step-2-icon.svg',
   3: '/Icons/steps-info/step-3-icn.svg',
   4: '/Icons/steps-info/step-4-icon.svg',
+  5: '/Icons/steps-info/step-5-icon.svg',
 }
 
 function stepImagePath(n) {
@@ -62,44 +63,54 @@ const STEPS_MODE = {
   subtitle: 'Flow',
   crumb: 'steps-waypoint',
   description:
-    'Four-step slot flow. Story column, sidebar, jump ahead, and free navigation stay in sync with the live iframe.',
+    'Five-step slot flow. An introduction, then the story column, steps list, in-frame arrows, and Waypoint Select, all in sync with the live iframe.',
   embedOrigin: 'https://steps-project-slot.vercel.app',
   urlStyle: 'hash',
-  stepTitles: ['Story Column', 'Waypoint Sidebar', 'Jump Ahead', 'Move Freely'],
-  iframePath: { 1: '#1', 2: '#2', 3: '#3', 4: '#4' },
-  swatches: ['#e8e4f0', '#cab6e0', '#e8e4f0', '#cab6e0'],
+  stepTitles: ['Introduction', 'Story Column', 'Steps List', 'Frame Arrows', 'Waypoint Select'],
+  // The slot app has four screens; the introduction shares its first screen with Story Column.
+  embedSteps: [1, 1, 2, 3, 4],
+  iframePath: { 1: '#1', 2: '#1', 3: '#2', 4: '#3', 5: '#4' },
+  swatches: ['#cab6e0', '#e8e4f0', '#cab6e0', '#e8e4f0', '#cab6e0'],
   stepCopy: [
     {
       onScreen: [
-        'The iframe opens on the story of this flow. A step title and body sit in the center, while this column on the left carries the same beat.',
-        'Change steps here or inside the frame and both stay in sync. The hash, the live app, and this panel move together.',
+        'Step Waypoint is a guided tour of a live app. The iframe on the stage is the real slot app, and this column walks you through it one step at a time.',
+        'Each step pairs what is on screen with what to try next. The next four steps cover this column, the Steps list, the arrows inside the frame, and Waypoint Select.',
       ],
       movingForward:
-        'Read the intro on screen, then open the sidebar so every waypoint in the run is visible at once.',
+        'Open Story Column in the Steps list below to see how this column tracks the frame.',
     },
     {
       onScreen: [
-        'Every step also lives in the waypoint sidebar. If you lose your place, the list is the map back.',
-        'The active card is the step on screen. Pick another to jump the iframe without using the arrows.',
+        'The iframe in the center is the live slot app. This column tells the story of whatever step it is showing: the title, the step number, what is on screen, and where to go next.',
+        'The two always match. Change the step here or inside the frame, and the column, the iframe, and the page URL move together. Use the expand button beside the stage to view the frame full screen, and press Escape to return.',
       ],
       movingForward:
-        'Once you can find any waypoint from the rail, try Start to skip ahead in the flow.',
+        'Read this beat, then use the Steps list below to pick another waypoint.',
     },
     {
       onScreen: [
-        'Start jumps you forward in the sequence instead of walking one beat at a time.',
-        'Use it when you already know the next beat and just need the iframe to catch up.',
+        'Every step in the flow sits in the Steps list at the bottom of this column. If you lose your place, the list is the map back.',
+        'The highlighted row is the step on screen. Pick another and the iframe crossfades to it, while the breadcrumb and the URL hash update to match.',
       ],
       movingForward:
-        'After the jump, use the arrows to confirm you can still move one step at a time.',
+        'Once you can reach any step from the list, try the arrows inside the iframe.',
     },
     {
       onScreen: [
-        'You can move back and forth at any time. Previous and next wrap, and this shell follows.',
-        'Nothing in the flow is a dead end. Step 4 can return to 1, and 1 can step back to 4.',
+        'The arrows inside the iframe walk the flow one step at a time, and this column follows along without reloading the frame.',
+        "Nothing is a dead end. Back from the frame's first screen wraps to its last, forward from the last returns to the first, and the browser's back and forward buttons retrace your path.",
       ],
       movingForward:
-        'Walk the loop once more, then keep the iframe up while you tune this column.',
+        'Walk the loop once, then switch the header to Waypoint Select to see the other projects.',
+    },
+    {
+      onScreen: [
+        'Waypoint Select at the top of this column swaps the whole project. Polar Systems, Luna Base, and Node Menu each load into the same frame with their own steps.',
+        'A loading screen covers the stage during the swap, and each project opens on its first step. Switch back to Information to read along with it.',
+      ],
+      movingForward:
+        'Pick a project in Waypoint Select, or stay here and walk the loop again.',
     },
   ],
 }
@@ -302,6 +313,17 @@ export function polarFlowIdFromHash(hash, projectId = DEFAULT_PROJECT_ID) {
 export function embedExtrasForStep(projectId, stepId) {
   const route = getWaypointMode(projectId).iframeRoutes?.[stepId]
   return route ? { route } : {}
+}
+
+export function embedStepFor(projectId, stepId) {
+  const index = Math.max(0, flowStepsFor(projectId).findIndex((s) => s.id === stepId))
+  return getWaypointMode(projectId).embedSteps?.[index] ?? index + 1
+}
+
+export function stepIdForEmbedStep(projectId, embedStep, currentStepId) {
+  if (embedStepFor(projectId, currentStepId) === embedStep) return currentStepId
+  const match = flowStepsFor(projectId).find((s) => embedStepFor(projectId, s.id) === embedStep)
+  return match?.id ?? null
 }
 
 export function stepMarkIconForStep(id) {

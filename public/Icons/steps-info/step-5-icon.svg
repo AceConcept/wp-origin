@@ -1,0 +1,10 @@
+<svg width="141" height="141" viewBox="0 0 141 141" fill="none" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<path id="step5-diamond" d="M32 16L16 32L0 16L16 0L32 16ZM3.91211 16L16 28.0879L28.0879 16L16 3.91211L3.91211 16ZM23.376 15.999L16 23.375L8.62402 15.999L16 8.62305L23.376 15.999Z" fill="#050505"/>
+</defs>
+<use href="#step5-diamond" transform="translate(2.5 2.5) scale(2.0625)"/>
+<use href="#step5-diamond" transform="translate(73.5 2.5) scale(2.0625)"/>
+<use href="#step5-diamond" transform="translate(37.5 37.5) scale(2.0625)"/>
+<use href="#step5-diamond" transform="translate(2.5 73.5) scale(2.0625)"/>
+<use href="#step5-diamond" transform="translate(73.5 73.5) scale(2.0625)"/>
+</svg>
